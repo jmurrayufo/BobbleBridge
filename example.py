@@ -5,6 +5,7 @@
  
 # Import a library of functions called 'pygame'
 import pygame
+import time
  
 # Initialize the game engine
 pygame.init()
@@ -27,12 +28,14 @@ pygame.display.set_caption("Professor Craven's Cool Game")
 #Loop until the user clicks the close button.
 done = False
 clock = pygame.time.Clock()
- 
+
+
 while done == False:
  
     # This limits the while loop to a max of 10 times per second.
     # Leave this out and we will use all CPU we can.
-    clock.tick(1)
+    clock.tick(60)
+    pygame.display.set_caption( "FPS=%f"%(clock.get_fps( ) ) )
      
     for event in pygame.event.get(): # User did something
         if event.type == pygame.QUIT: # If user clicked close
@@ -84,6 +87,7 @@ while done == False:
     # Go ahead and update the screen with what we've drawn.
     # This MUST happen after all the other drawing commands.
     pygame.display.flip()
- 
+
+
 # Be IDLE friendly
 pygame.quit()
