@@ -12,7 +12,15 @@ class Obj( ):
       # Name (Not guaranteed to be unique)
       self.Name = "DEFAULT"
 
-      loc = kargs.get('loc',(0,0))
+      # Numeric faction alliance. 
+      # Special Cases:
+      #  -1: All other non zero targets are enemies, including other -1's
+      #   0: Neutral (eg: planet, asteroid)
+      #   1: Players faction
+      #  2+: Positive integers represent unique factions at war with each other
+      self.Faction = 0  
+
+      loc = kargs.get('loc', ( 0, 0 ) )
       # X location in the universe (in meters)
       self.X = float( loc[ 0 ] )
 
