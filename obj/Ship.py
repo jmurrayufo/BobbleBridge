@@ -1,6 +1,8 @@
+from Obj import Obj
 
-class Ship( ):
-   def __init__( self ):
+class Ship( Obj ):
+   def __init__( self, *args, **kwargs ):
+      Obj.__init__( self, *args, **kwargs )
       self.ID = 0
       
       self.Name = 'DEFAULT'
@@ -14,8 +16,6 @@ class Ship( ):
       # Fleet of ship (if there is one)
       self.Fleet = None
 
-      # We will keep four basic dicts to determine all related stats of the given ship.
-
       # Systems cover all basic functions of the ship (Engine, Sensors, Life Support etc etc)
       self.Systems = dict()
 
@@ -27,3 +27,6 @@ class Ship( ):
 
       # Hull represents the physical state of the ship. Several components will be kept here.
       self.Hull = dict()
+
+   def __str__( self ):
+      return "ship"+str(self.X)

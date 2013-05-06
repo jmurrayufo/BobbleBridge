@@ -1,6 +1,6 @@
-import sys
-import time
+import obj.Ship as Ship
+import dis
 
-print str()
-if( "1" ):
-   print "f"
+x = Ship.Ship()
+
+print x

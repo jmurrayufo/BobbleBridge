@@ -1,3 +1,9 @@
+import random
+
+
+from Sector import Sector
+from Planet import Planet
+
 
 class Universe( ):
    """
@@ -10,7 +16,26 @@ class Universe( ):
    search for them
    """
    def __init__( self ):
-
-
       self.Sectors = dict()
+
+      self.Sectors[ ( 0, 0 ) ] = Sector( ( 0, 0 ) )
+
+   def BigBang( self ):
+      self.__init__()
+
+      locTmp = ( random.uniform( -10, 10 ), random.uniform( -10, 10 ) )
+
+      self.Sectors[(0,0)].Add( Planet( loc = locTmp ) )
+
       
+   def Tick( self, timeStep = 1/60.0 ): 
+      """
+      Run one Tick of the game world. The sim expects 60 simulated fps. 
+      """
+      for i in self.Sectors:
+         self.Sectors[i].Tick( self, timeStep )
+
+   def Print( self, spacing=""):
+      for i in self.Sectors:
+         print spacing+"Sector:",i
+         print self.Sectors[i].Print( spacing+" " )
