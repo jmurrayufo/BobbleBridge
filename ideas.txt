@@ -1,0 +1,22 @@
+Network
+   Send bytes in data containers with 4 parts. 
+   Bytes:
+      0: Type 
+         Update
+            Full copy of the game state. Can be requested by the client, or pushed by the server. These might be HUGE
+
+         Delta
+            Small chunk of data from server for the client. Generally will have only changes to the position of objects, their health, other relevant user inputs etc etc.  
+
+         Command
+            Command from the user. This could be to fire weapons, raise shields, target ship, activate scanners, etc etc etc. The command will be very small.
+
+         Heart Beat
+            Update sent by the clients once a second to assure that they are running. 
+
+      1-4: Size
+         Big Endian storage of data size. This 32 bit number represents the size of the incoming data packet. This value will allow the receiver to piece together packets of large sizes. 
+      5...n: Data
+         All the data from the transmission. 
+      n+1: Checksum
+         Byte by Byte checksum for the transmission. Will have all data preceding the checksum in it. 
