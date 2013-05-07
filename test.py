@@ -24,7 +24,7 @@ for i in range(2**16):
 print "D ready"
 
 # print x
-dtype  = chr(1)
+dtype  = chr(255)
 data = cPickle.dumps(x,2)
 print len(data)
 dLen = getLenBytes( x )
@@ -38,6 +38,10 @@ for i in data:
    chksum+= ord(i)
    chksum%=256
 print chksum
+print "\n",ord(data[0])
 
-for i in dLen:
-   print ord(i)
+print "\n"
+
+x = "abcdefg"
+
+print x[5:-1]

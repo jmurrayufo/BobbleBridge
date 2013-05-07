@@ -1,5 +1,6 @@
 import time
 import socket
+import cPickle
 
 class Connection():
    """
@@ -56,44 +57,113 @@ class Connection():
    def Close( self ):
       self.Conn.close()
 
+class DataPacket( ):
+   """
+   Input/Output Container. 
+   """
+
+   # Class Defines
+   # Legal Connection Values are values of the first byte 
+   _LEGAL_CONNECTION_VALUES = [1,2,3,4]
+
+   def __init__( self, data, direction='in' ):
+      """
+      When created, a DataPacket might require more data before being completed. 
+      """
+
+      # Data input/output is kept in the same container
+      self.Data = data
+
+      # Do we have input, or output?
+      self.Direction = direction
+
+      # Any data NOT saved is kept here for return to the origin data stream
+      self.Excess = str()
+
+      # Health state of the Packet
+      #  0: Unprocessed
+      #  1: Healthy
+      #  2: Underflow
+      #  3: Healthy-Overflow
+      #  4: Corrupt
+      self.Health = 0
+
+      if( direction in ['in'] and self.Health == 0 ):
+         # Start a fresh data packet
+         dType = ord( data[0] )
+         self.Header = dType
+
+         # Determine if we have enough to parse yet. 
+         self.Len = 0
+         for i in range(3,-1,-1):
+            self.Len += ord(self.Data[i+1]) * 2**( 8 * (3-i) )
+
+         if( )
+
+         self.CheckSum = 0
+         for i in data[:-1]:
+            print ord(i)
+            self.CheckSum += ord(i) 
+         self.CheckSum %= 256
+
+         if( self.CheckSum == )
+
+      elif( direction in ['out'] ):
+         pass
+
+
+def getLenBytes( data ):
+   # Calculate 4 bytes
+   retVal = list( )
+   data = len( data )
+   tmp = 0
+   for i in range( 4 ):
+      mod = 2**( 8 * (i+1) )
+      div = 2**( 8 * (i) )
+      retVal.append( (data % mod)/div )
+      data -= retVal[-1]
+   tmp = str()
+   for i in retVal[::-1]:
+      tmp += chr(i)
+   return tmp
+
+def PrepPacket( type, data ):
+   """
+   Return a prepared network packet string of type comprised in data
+   """
+   dType = chr(type)
+   data = cPickle.dumps( data ,2 )
+   dLen = getLenBytes( data )
+   
+   print ord(dType)
+
+   retVal = dType + dLen + data
+
+   chksum = 0
+   for i in retVal:
+      chksum+= ord(i)
+      chksum%=256
+   retVal = retVal + chr(chksum)
+   return retVal
 
 
 # Place holder test code
 if __name__ == '__main__':
-   # Run test code!
-   HOST = ''               # Symbolic name meaning all available interfaces
-   PORT = 56464              # Arbitrary non-privileged port
-   s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-   s.bind( (HOST, PORT) )
 
-   print "Begin Listen"
-   s.listen( 5 )
-   s.settimeout(1)
-   pool = list()
-   while True:
+   x = list()
+   for i in range(1):
+      x.append(i)
 
-      print "\nNew Connections?"
-      try:
-         conn, addr = s.accept()
-      except( socket.timeout ):
-         pass
-      else:
-         print 'Connected by', addr
-         pool.append( Connection( conn, addr ) )
-     
-      for idx,val in enumerate( pool ):
-         print "Check",val
-         try:
-            val.Recv( )
-         except( socket.error ):
-            pass
-         if( val.Data ):
-            print " Got:",val.Data
-         else:
-            if( val.Stale( 5 ) ):
-               print " TO!"
-               print " Removed!",val
-               print " Age:",val.Age()
-               print val.Stale( 5 )
-               del pool[idx]
-         val.Send( val.Data )
+   print "PrePacket:\n",x
+   print "packet proc.:"
+   x = PrepPacket(1,x)
+   print "PostPacket:"
+
+
+   result = DataPacket( x )
+
+   print "\n\nResults:"
+   print result.Len
+   print result.Header
+   print result.CheckSum
+   print ord(result.Data[-1])
