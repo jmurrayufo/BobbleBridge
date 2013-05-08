@@ -74,16 +74,19 @@ class DataPacket( ):
    #     Data was processed and found to be healthy, but excess data was discovered. 
    #  4: Corrupt
    #     Unrecoverable data error. Suggested that the network buffer be cleared to reset. 
+   #  5: Timeout
+   #     Regardless of data state, the packet has timed out sense it's creation. 
    _LEGAL_CONNECTION_VALUES = [1,2,3,4]
 
 
-   def __init__( self, data, direction='in' ):
+   def __init__( self, data, direction='in', timeout=40 ):
       """
       Process data to be parsed out, or pickled for transmission.
       data - Data to be un-pickled from network, or Object to be pickled for network 
          transfer
       direction - Must be 'in' or 'out' to represent the meaning of the data (default: 
          'in')
+      timeout - Timeout in ms of the DataPacket if receiving new injected data. 
       By default data is assumed to be incoming data to be parsed out. Data may not be in
          a contiguous form, so __init__ assumes that it make be missing or have excess 
          data to work with. On return, the Health state is set. 
@@ -105,11 +108,16 @@ class DataPacket( ):
       self.Header = None
       self.Len = None
       self.CheckSum = None
+      self.TimeCreated = None
 
       # We have new data with no previous state of data. Try to parse this in
       if( direction in ['in'] and self.Health == 0 ):
          # Start a fresh data packet
          self.Header = ord( data[0] )
+
+         self.TimeCreated = time.time()
+
+         self.Timeout = timeout
 
          # Get the packet size
          if( self.CalcLen() == False ):
@@ -140,6 +148,10 @@ class DataPacket( ):
 
       # Grab new data into the DataPacket
       self.Data += data
+
+      if( time.time() - self.TimeCreated > self.Timeout/1000. ):
+         self.Health = 5
+         return
 
       # Check to see if this inject completes the packet
       if( self.CalcLen() == False ):
@@ -252,21 +264,9 @@ if __name__ == '__main__':
    y = PrepPacket(1,d)
    print "\nPostPacket:"
 
-   results = list()
-
-   results.append( DataPacket( x+y ) )
-
-   print results[-1].Health
-
-   while results[-1].Health == 3:
-      print "loop"
-      results.append( DataPacket( results[-1].TakeExcess( ) ) )
-
-   # result = DataPacket( x[:-2] )
-   # print "\nInjection..."
-   # result.Inject( x[-2:] )
+   result = DataPacket( x[:-2] )
+   print "\nInjection..."
+   result.Inject( x[-2:] )
 
    print "\n\nResults:"
-
-   for idx,val in enumerate( results ):
-      print " ",idx,val.Health
+   print result.Health
