@@ -64,11 +64,29 @@ class DataPacket( ):
 
    # Class Defines
    # Legal Connection Values are values of the first byte 
+   #  0: Unprocessed
+   #     Default state, shouldn't encounter outside of __init__
+   #  1: Healthy
+   #     Data was processed and found to be healthy. Data is ready for interaction
+   #  2: Underflow
+   #     Data indicated more data is required before processing
+   #  3: Healthy-Overflow
+   #     Data was processed and found to be healthy, but excess data was discovered. 
+   #  4: Corrupt
+   #     Unrecoverable data error. Suggested that the network buffer be cleared to reset. 
    _LEGAL_CONNECTION_VALUES = [1,2,3,4]
+
 
    def __init__( self, data, direction='in' ):
       """
-      When created, a DataPacket might require more data before being completed. 
+      Process data to be parsed out, or pickled for transmission.
+      data - Data to be un-pickled from network, or Object to be pickled for network 
+         transfer
+      direction - Must be 'in' or 'out' to represent the meaning of the data (default: 
+         'in')
+      By default data is assumed to be incoming data to be parsed out. Data may not be in
+         a contiguous form, so __init__ assumes that it make be missing or have excess 
+         data to work with. On return, the Health state is set. 
       """
 
       # Data input/output is kept in the same container
@@ -81,36 +99,110 @@ class DataPacket( ):
       self.Excess = str()
 
       # Health state of the Packet
-      #  0: Unprocessed
-      #  1: Healthy
-      #  2: Underflow
-      #  3: Healthy-Overflow
-      #  4: Corrupt
       self.Health = 0
 
+      # Placeholder value
+      self.Header = None
+      self.Len = None
+      self.CheckSum = None
+
+      # We have new data with no previous state of data. Try to parse this in
       if( direction in ['in'] and self.Health == 0 ):
          # Start a fresh data packet
-         dType = ord( data[0] )
-         self.Header = dType
+         self.Header = ord( data[0] )
 
-         # Determine if we have enough to parse yet. 
-         self.Len = 0
-         for i in range(3,-1,-1):
-            self.Len += ord(self.Data[i+1]) * 2**( 8 * (3-i) )
+         # Get the packet size
+         if( self.CalcLen() == False ):
+            self.Health = 2
+            return
 
-         if( )
+         # We can prepare the checksum now
+         if( self.CalcCheckSum() == False ):
+            self.Health = 4
+            return
 
-         self.CheckSum = 0
-         for i in data[:-1]:
-            print ord(i)
-            self.CheckSum += ord(i) 
-         self.CheckSum %= 256
+         # Check if we had too much data 
+         if( self.CalcExcess() == False ):
+            self.Health = 3
+            # Save from the first byte after the check sum, until the end
+            self.Excess = data[ 6 + self.Len:]
+            return
 
-         if( self.CheckSum == )
+         # Without any other reason to assume an error, we are healthy. 
+         self.Health = 1
 
       elif( direction in ['out'] ):
          pass
 
+
+   def Inject( self, data ):
+      assert( self.Health == 2 ), "Attempted to inject without underflow!"
+
+      # Grab new data into the DataPacket
+      self.Data += data
+
+      # Check to see if this inject completes the packet
+      if( self.CalcLen() == False ):
+         self.Health = 2 # Underflow (no change!)
+         return
+
+      if( self.CalcCheckSum() == False ):
+         self.Health = 4 # Corrupt data state
+         return
+
+      if( self.CalcExcess() == False ):
+         self.Health = 3
+         # Save from the first byte after the check sum, until the end
+         self.Excess = data[ self.Len + 6: ]
+         return
+
+      self.Health = 1
+
+
+   def CalcLen( self ):
+      # Attempt to calculate the length of the data packet
+      # Get the packet size
+      if( len( self.Data ) < 5 ):
+         return False
+
+      self.Len = 0
+      for i in range(3,-1,-1):
+         self.Len += ord(self.Data[i+1]) * 2**( 8 * (3-i) )
+
+      if( self.Len > len( self.Data ) - 6 ):
+         self.Health = 2 # We are currently in an underflow state
+         return False
+      return True
+
+
+   def CalcCheckSum( self ):
+      # Attempt to calculate the checksum.
+
+      # Compare the calculated check sum to the one in the data steam. This CANNOT be 
+      #  wrong or there was data corruption! We have 5 bytes of header, plus the data 
+      #  to get past. This operation SHOUD be index safe given the above checks in 
+      #  length.
+      self.CheckSum = 0
+      for i in self.Data[:5 + self.Len]:
+         self.CheckSum += ord(i) 
+      self.CheckSum %= 256
+
+      if( self.CheckSum != ord( self.Data[ 5 + self.Len ] ) ):
+         return False
+      return True
+      
+
+   def CalcExcess( self ):
+      # Check if we had too much data 
+      if( self.Len < len( self.Data ) - 6 ):
+         return False
+      return True
+
+
+   def TakeExcess( self ):
+      # Return any current excess, then set to healthy state
+      self.Health = 1
+      return self.Excess
 
 def getLenBytes( data ):
    # Calculate 4 bytes
@@ -120,7 +212,7 @@ def getLenBytes( data ):
    for i in range( 4 ):
       mod = 2**( 8 * (i+1) )
       div = 2**( 8 * (i) )
-      retVal.append( (data % mod)/div )
+      retVal.append( (data % mod) / div )
       data -= retVal[-1]
    tmp = str()
    for i in retVal[::-1]:
@@ -134,8 +226,6 @@ def PrepPacket( type, data ):
    dType = chr(type)
    data = cPickle.dumps( data ,2 )
    dLen = getLenBytes( data )
-   
-   print ord(dType)
 
    retVal = dType + dLen + data
 
@@ -150,20 +240,33 @@ def PrepPacket( type, data ):
 # Place holder test code
 if __name__ == '__main__':
 
-   x = list()
-   for i in range(1):
-      x.append(i)
+   d = list()
+   for i in range(10):
+      d.append(i)
 
-   print "PrePacket:\n",x
-   print "packet proc.:"
-   x = PrepPacket(1,x)
-   print "PostPacket:"
+   print "PrePacket:"
+   print "  Input:"
+   print "  ",d
+   print "  Packet Process..."
+   x = PrepPacket(1,d)
+   y = PrepPacket(1,d)
+   print "\nPostPacket:"
 
+   results = list()
 
-   result = DataPacket( x )
+   results.append( DataPacket( x+y ) )
+
+   print results[-1].Health
+
+   while results[-1].Health == 3:
+      print "loop"
+      results.append( DataPacket( results[-1].TakeExcess( ) ) )
+
+   # result = DataPacket( x[:-2] )
+   # print "\nInjection..."
+   # result.Inject( x[-2:] )
 
    print "\n\nResults:"
-   print result.Len
-   print result.Header
-   print result.CheckSum
-   print ord(result.Data[-1])
+
+   for idx,val in enumerate( results ):
+      print " ",idx,val.Health
