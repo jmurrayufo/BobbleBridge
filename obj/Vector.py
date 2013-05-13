@@ -54,6 +54,8 @@ class Vector2():
       Vectors can be created in 5 different declarations
       Vector2( )
          Simple vector what points to ( 0, 0 )
+      Vector2( Vector2 )
+         Copy constructor
       Vector2( 4, 5 )
          Numbers without keywords are assumed to be x, y locations from (0,0)
       Vector2( x = 4, y = 5 )
@@ -70,6 +72,9 @@ class Vector2():
       if( len( keys ) == 0 and len( args ) == 0 ):
          self.Mag = 0
          self.Angle = 0
+      elif( len( args ) and args[0].__class__.__name__ == 'Vector2' ):
+         self.Mag = args[0].Mag
+         self.Angle = args[0].Angle
       elif( len( keys ) == 2 and keys[0] in ['x','y'] and keys[1] in ['x','y'] ):
          x = kargs['x']
          y = kargs['y']
@@ -283,3 +288,12 @@ def D2R( degrees ):
 
 def RD2( radians ):
    return radians / math.pi * 180.
+
+if __name__ == '__main__':
+
+      print Vector2( )
+      print Vector2( Vector2(m=5,d=360) )
+      print Vector2( 4, 5 )
+      print Vector2( x = 4, y = 5 )
+      print Vector2( m = 5, r = 3.14159 )
+      print Vector2( m = 10, d = 180 )
