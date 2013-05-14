@@ -33,7 +33,6 @@ class Connection():
       except( socket.error ):
          return
 
-
       if( self.Data ):
          self.LastHeard = time.time()
          self.In += len( self.Data )
@@ -56,6 +55,31 @@ class Connection():
 
    def Close( self ):
       self.Conn.close()
+
+
+
+class ConnectionThread():
+   def __init__( self, jobsQ, resultsQ, quitQ, lockObj, address, port=56464 ):
+      """
+      Inputs:
+         jobsQ
+            Outgoing data transmissions to dispatch will be Queued here
+         resultsQ
+            Incoming data recieved is sent here after being processed as a 
+            DataPacket
+         quitQ
+            This Queue is empty until the thread needs to be closed. 
+         lockObj
+            Locking object for thread protection
+         address
+            IP/IPv6/address of the device to connect to
+         port
+            Port number to be used for connections
+            Default=56464
+      """
+
+
+
 
 class DataPacket( ):
    """
@@ -216,6 +240,8 @@ class DataPacket( ):
       self.Health = 1
       return self.Excess
 
+
+
 def getLenBytes( data ):
    # Calculate 4 bytes
    retVal = list( )
@@ -230,6 +256,8 @@ def getLenBytes( data ):
    for i in retVal[::-1]:
       tmp += chr(i)
    return tmp
+
+
 
 def PrepPacket( type, data ):
    """
@@ -247,6 +275,7 @@ def PrepPacket( type, data ):
       chksum%=256
    retVal = retVal + chr(chksum)
    return retVal
+
 
 
 # Place holder test code
