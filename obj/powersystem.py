@@ -5,8 +5,8 @@ class PowerNode:
     ColdPlasma = 0
     HotPlasma  = 0
 
-    ColdPlasmaPressure = 0
-    HotPlasmaPressure  = 0
+    ColdPlasmaRate = 0
+    HotPlasmaRate  = 0
 
     PlasmaCoolingRate  = 0
     PlasmaHeatingRate  = 0
@@ -106,9 +106,32 @@ class Regulator(PowerNode):
         TotalColdPressure = 0
         TotalHotPressure  = 0
         for x in generator:
-            TotalColdPressure += x.ColdPlasmaRate*TimeStep
+            TotalColdPressure += x.ColdPlasmaRate* TimeStep
             TotalHotPressure  += x.HotPlasmaRate * TimeStep
         for x in system:
+			TotalColdPressure += x.ColdPlasmaRate * TimeStep
+			TotalHotPressure  += x.HotPlasmaRate  * TimeStep
+			
+		# The Following Routines Will Attempt to use the Tanks to Equalize the Pressure in The System
+		if TotalHotPressure > 0:
+			# Push Plasma into Tanks
+			if TotalHotPressure > 0:
+				# Pressure has exceeded System Capacity, vent the excess Pressure from this timestep.
+		else: if TotalHotPressure < 0:
+			# Push Pull Plasma From Tanks
+		else:
+			# Neither Pull Nor Push Plasma From the Tanks
+			
+		if TotalColdPressure > 0:
+			# Push Plasma into Tanks
+			if TotalColdPressure > 0:
+				#pressure has exceeded System Capacity, vent the excess Pressure from this timestep
+		else: if TotalHotPressure < 0:
+			# Pull Plasma from Tanks
+		else:
+			#Neither Push nor pull pressure from Tanks
+			
+
 
 class Generator(PowerNode):
     def __init__ (self, FlowRate):
