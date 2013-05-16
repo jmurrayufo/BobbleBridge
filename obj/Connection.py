@@ -7,27 +7,44 @@ import time
 
 class Connection():
    """
-   Server needs to maintain a variable amount of connections to the client space. These
-   objects will keep track of those connections, and handle timeouts
+   Connection provides a wrapper to help handle a lot of repeat connection code
+      between the server and the client. 
    """
-   def __init__( self, conn, addr ):
-      self.Conn = conn
-      self.Addr = addr
+   def __init__( self, address='', port=56464, bind=True, connection=None ):
+      self.Address = address
+      self.Port = port
+      self.Bind = bind
+
       self.FirstHeard = time.time()
       self.LastHeard = time.time()
+
       self.Data = ''
+
       self.Packets = collections.deque()
       self.In = 0
       self.Out = 0
 
+      self.Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+      if( connection ):
+         self.Socket = connection
+
+      else:
+         if( self.Bind ):
+            self.Socket.bind( ( self.Address, self.Port ) )
+            self.Socket.listen( 5 )
+         else:
+            self.Socket.connect( ( self.Address, self.Port ) )
+         self.Socket.settimeout( 0 )
+
 
    def __del__( self ):
       # Lets be nice and try to close the connection when we are deleted
-      self.Conn.close()
+      self.Socket.close()
 
 
    def __str__( self ):
-      return "%s:%d"%( self.Addr[0], self.Addr[1] )
+      return "%s:%d"%( self.Address, self.Port )
 
 
    def __repr__( self ):
@@ -37,7 +54,7 @@ class Connection():
    def Recv( self, size = 4096 ):
       self.Data = str()
       try:
-         self.Data = self.Conn.recv( size )
+         self.Data = self.Socket.recv( size )
       except( socket.error ):
          return
 
@@ -53,7 +70,6 @@ class Connection():
                # We have a corrupt state, this connection needs to be flushed
                self.Flush()
                return
-
             # Check for overflow
             elif( self.Packets[-1].Health == 3 ):
                extra = self.Packets[-1].TakeExcess()
@@ -111,15 +127,11 @@ class Connection():
       if( data.__class__.__name__ == 'DataPacket' ):
          data = data.Data
       else:
-         if( data[0] == 'E' ):
-            data = DataPacket( data, direction = 'out' ).Data
-            data = data[0:4] + '\xFF' + data[5:]
-         else:
-            data = DataPacket( data, direction = 'out' ).Data
+         data = DataPacket( data, direction = 'out' ).Data
       retries = 0
       while True:
          try:
-            self.Conn.sendall( data )
+            self.Socket.sendall( data )
             self.Out += len( data )
             self.LastHeard = time.time()
             break
@@ -133,6 +145,14 @@ class Connection():
             #  catch interrupts while we run. 
             self.Heal()
 
+
+   def Accept( self ):
+      try:
+         conn, addr = self.Socket.accept()
+         return Connection( address = addr[0], port = addr[1], bind = False, connection = conn )
+      except( socket.timeout, socket.error ):
+         pass
+      return None
 
 
    def Flush( self ):
@@ -149,7 +169,7 @@ class Connection():
       self.Data = ''
       while True:
          try:
-            self.Data = self.Conn.recv( 4096 )
+            self.Data = self.Socket.recv( 4096 )
          except( socket.error ):
             break
 
@@ -158,11 +178,11 @@ class Connection():
       """
       For some reason the connection shows as having a problem. Lets try to heal it!
       """
-      self.Conn.close()
-      self.Conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      self.Socket.close()
+      self.Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
       try:
-         self.Conn.connect( self.Addr )
-         self.Conn.settimeout( 0 )
+         self.Socket.connect( ( self.Address, self.Port) )
+         self.Socket.settimeout( 0 )
       except ( socket.error ) as e2:
          if( e2[0] == 10061 ):
             print "Packet Refused"
@@ -186,7 +206,7 @@ class Connection():
 
 
    def Close( self ):
-      self.Conn.close()
+      self.Socket.close()
 
 
 
@@ -216,16 +236,11 @@ class ConnectionThread():
       self.QuitQ = quitQ
       self.LockObj = lockObj
       # Run basic setup of the ConnectionThread
-      self.Host = address # Symbolic name meaning all available interfaces
-      self.Port = port
-      self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
       if( Ctype == 'server' ):
-         self.s.bind( ( self.Host, self.Port ) )
-         self.s.listen( 5 )
+         self.Connection = Connection( address, port, True )
       elif( Ctype == 'client' ):
-         self.s.connect( ( self.Host, self.Port ) )
+         self.Connection = Connection( address, port, False )
       self.Ctype = Ctype
-      self.s.settimeout( 0 )
 
       # The Pool holds the set of connections we care about
       self.Pool = list()
@@ -234,7 +249,7 @@ class ConnectionThread():
       # Infinite loop of execution
       RunFrameRate = 60
       lastFrame = time.time()
-      if( self.Ctype == 'server' ):  
+      if( self.Ctype == 'server' ):
          pool = list()
          while True:
             tmpDiff = time.time() - lastFrame
@@ -243,10 +258,11 @@ class ConnectionThread():
             lastFrame = time.time()
             # Check for new connections to add to the pool
             try:
-               conn, addr = self.s.accept()
+               tmp = self.Connection.Accept()
                # TODO: Replace this print line with a logging call
-               print 'Connected by', addr
-               pool.append( Connection( conn, addr ) )
+               if( tmp ):
+                  print 'Connected by', tmp
+                  pool.append( tmp )
             except( socket.timeout, socket.error ):
                # No connections were received, move on
                pass
@@ -265,8 +281,6 @@ class ConnectionThread():
                   print tmp
                   print tmp.Open()
                   self.ResultsQ.put( tmp )
-                  # print "Check",val
-                  # print " Got:",val.Data
                if( val.Stale( ) ):
                   # TODO: This section should be a log, not a print
                   print "\nCheck",val
@@ -277,18 +291,6 @@ class ConnectionThread():
                   print " Out:",val.Out
                   print " Btyes/s:",(val.In + val.Out)/val.GetAge()
                   del pool[idx]
-               # Outgoing data must be pulled from the jobsQ, this might require
-               #  filtering based on several connections
-               # try:
-               #    val.Send( val.Data )
-               # except socket.error as e :
-               #    # Work needs to be done here to handle a larger range of error codes. 
-               #    if( e.errno == 10035 ):
-               #       pass
-               #    else:
-               #       print " Cannot send! Delete!"
-               #       print e,
-               #       del pool[idx]
 
       elif( self.Ctype == 'client' ):
 
@@ -296,8 +298,6 @@ class ConnectionThread():
          heartbeat = 5
          lastHeartBeat = time.time() - heartbeat 
 
-         # Connect to server
-         server = Connection( self.s, ( self.Host, self.Port ) )
          print "Connected!"
          while True:
 
@@ -306,38 +306,38 @@ class ConnectionThread():
                time.sleep( 1/float(RunFrameRate) - tmpDiff )
             lastFrame = time.time()
             try:
-               server.Recv( )
+               self.Connection.Recv( )
             except( socket.error ):
                raise
             
-            while( server.HasPacket() ):
-               self.resultsQ.put( server.GetPacket( ) )
+            while( self.Connection.HasPacket() ):
+               self.resultsQ.put( self.Connection.GetPacket( ) )
             
             # TODO: Adjust this section to handle sending errors like bellow
             while( self.JobsQ.empty() == False ):
                tmp = self.JobsQ.get()
-               # server.Send( DataPacket( tmp, direction='out' ) )
-               server.Send( tmp )
+               # self.Connection.Send( DataPacket( tmp, direction='out' ) )
+               self.Connection.Send( tmp )
 
 
             if( self.QuitQ.empty() == False ):
-               server.Close()
+               self.Connection.Close()
                return
 
             if( time.time() - lastHeartBeat > heartbeat ):
                print "Thump!"
-               server.Send( "Thump!" ) 
+               self.Connection.Send( "Thump!" ) 
                lastHeartBeat = time.time()
 
-            if( server.Stale( ) ):
+            if( self.Connection.Stale( ) ):
                # TODO: This section should be a log, not a print
-               print "\nCheck",server
+               print "\nCheck",self.Connection
                print " Connection timed Out"
-               print " Removed!",server
-               print " Age:",server.GetAge()
-               print " In:",server.In
-               print " Out:",server.Out
-               print " Btyes/s:",(server.In + server.Out)/server.GetAge()
+               print " Removed!",self.Connection
+               print " Age:",self.Connection.GetAge()
+               print " In:",self.Connection.In
+               print " Out:",self.Connection.Out
+               print " Btyes/s:",(self.Connection.In + self.Connection.Out)/self.Connection.GetAge()
                return
 
 
