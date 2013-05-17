@@ -1,4 +1,4 @@
-
+from Vector import Vector2
 
 class Obj( ):
    def __init__( self, *args, **kargs):
@@ -20,27 +20,22 @@ class Obj( ):
       #  2+: Positive integers represent unique factions at war with each other
       self.Faction = 0  
 
-      loc = kargs.get('loc', ( 0, 0 ) )
-      # X location in the universe (in meters)
-      self.X = float( loc[ 0 ] )
+      loc = kargs.get( 'loc', ( 0, 0 ) )
 
-      # Y location in the universe (in meters)
-      self.Y = float( loc[ 1 ] )
+      # Location in reference to local sector
+      self.Loc = Vector2( x = loc[0], y = loc[1] )
 
-      # X velocity in reference to the universe (in meters)      
-      self.VX = float()
-
-      # Y velocity in reference to the universe (in meters)
-      self.VY = float()
+      # Velocity of the object, kept in m/s
+      self.Vel = Vector2( m=0, d=0 )
 
       # Mass of the object in Kg
-      self.Mass = float()
+      self.Mass = float( )
 
-      # Radial size of the object in meters (collision detection)
-      self.Size = float()
+      # Radial size of the object in meters ( collision detection )
+      self.Size = float( )
 
       # Compass heading the object is facing towards
-      self.Direction = float()
+      self.Direction = float( )
 
       # Sprite to use if it exists, this might also be overload to contain a shape
       self.Sprite = None
