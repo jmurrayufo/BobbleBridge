@@ -11,6 +11,14 @@ class Connection():
       between the server and the client. 
    """
    def __init__( self, address='', port=56464, bind=True, connection=None ):
+      ##
+      # Constructor
+      # \param address IP/URL of the server to connect to (default of '')
+      # \param port Port number (default of 56464)
+      # \param bind Sets this connect to bind to an interface, rather then connecting to a 
+      # remote server
+      # \param connection A given active socket connection to copy onto this object. Will 
+      # not attempt to make a new connection if this exists. 
       self.Address = address
       self.Port = port
       self.Bind = bind
@@ -52,6 +60,11 @@ class Connection():
 
 
    def Recv( self, size = 4096 ):
+      """
+      Attempt to receive a given amount of data from the connection.
+      """
+      ##
+      # \param size Number of bytes to attempt to pull from the connection.
       self.Data = str()
       try:
          self.Data = self.Socket.recv( size )
@@ -89,6 +102,11 @@ class Connection():
 
 
    def HasPacket( self ):
+      """
+      Check if the connection has received a full Data Packet that is read for reading. 
+      """
+      ##
+      # \return True if at least one packet exists, False otherwise. 
       if( len( self.Packets ) == 0 ):
          return False
 
@@ -102,19 +120,29 @@ class Connection():
 
 
    def GetPacket( self ):
+      """
+      Return the oldest healthy packet from the Connection. Will begin to break open 
+      packets with excess data if needed to slurp up data. 
+      """
+      ##
+      # \return Oldest healthy packet, or None if none exist
       # Do we have ANY packets?
       if( len( self.Packets ) == 0 ):
          return None
 
       # Is the top of the packet deque healthy?
       if( self.Packets[0].Health == 1 ):
-         return self.Packets.popleft()
+         return self.Packets.popleft( )
 
       # Do we need to slurp up excess then return an overflowed packet?
       elif( self.Packets[0].Health == 3):
-         extra = self.Packets[0].TakeExcess()
+         extra = self.Packets[0].TakeExcess( )
          self.Packets.append( DataPacket( extra ) )
-         return self.Packets.popleft()
+         return self.Packets.popleft( )
+
+      elif( self.Packets[0].Health in [ 4, 5 ] ):
+         self.Flush( )
+         return None
 
       # Nothing to get yet!
       else:
@@ -122,7 +150,13 @@ class Connection():
 
 
    def Send( self, data ):
-      # TODO: This needs to check if this is raw data, or a DataPacket. Both 
+      """
+      Attempt to send a given block of data to the established connection. If the data is
+      not already in the DataPacket form, it will be converted into it before transmission
+      """
+      ##
+      # \param data Information to be transmitted to the connection
+      # \todo This needs to check if this is raw data, or a DataPacket. Both 
       #  should be handled.
       if( data.__class__.__name__ == 'DataPacket' ):
          data = data.Data
@@ -147,12 +181,19 @@ class Connection():
 
 
    def Accept( self ):
-      try:
-         conn, addr = self.Socket.accept()
-         return Connection( address = addr[0], port = addr[1], bind = False, connection = conn )
-      except( socket.timeout, socket.error ):
-         pass
-      return None
+      """
+      Attempts to accept any new connections. This makes zero sense to non-Bind connections
+      """
+      ## 
+      if( self.Bind ):
+         try:
+            conn, addr = self.Socket.accept()
+            return Connection( address = addr[0], port = addr[1], bind = False, connection = conn )
+         except( socket.timeout, socket.error ):
+            pass
+         return None
+      else: 
+         raise socket.error
 
 
    def Flush( self ):
@@ -176,8 +217,11 @@ class Connection():
 
    def Heal( self, cause=None ):
       """
-      For some reason the connection shows as having a problem. Lets try to heal it!
+      Attempt to correct errors in the connection
       """
+      ##
+      # \param cause Placeholder, Ignored. Will eventually allow Heal to respond correctly 
+      # to the issue. 
       self.Socket.close()
       self.Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
       try:

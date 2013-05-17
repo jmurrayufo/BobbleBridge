@@ -1,6 +1,9 @@
 # This file will put forth examples of how we will code the project. 
 
-### DOXYGEN ###
+## 
+# Example file
+
+# ***DOXYGEN***
 # Doxygen will provide a means of marking up code for automatic documentation. 
 # To start a doxygen comment, the block cannot use """ style code blocks. You 
 # need to use a ## to begin the comments, then keep the block continuous. 
