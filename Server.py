@@ -3,14 +3,14 @@ import math
 import os
 import socket
 import sys
+import threading
+import Queue
 
 # Import Third Party Modules
 import pygame
 
-# Custom Modules from the obj folder!
-basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '\obj'
-sys.path.append(basedir)
-from Connection import *
+# Import Custom Modules
+from obj.Connection import ConnectionThread
 
 def Main( ):
    print "Begin Main()"
