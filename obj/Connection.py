@@ -11,6 +11,9 @@ class Connection():
       between the server and the client. 
    """
    def __init__( self, address='', port=56464, bind=True, connection=None ):
+      """
+      Test
+      """
       ##
       # Constructor
       # \param address IP/URL of the server to connect to (default of '')
@@ -158,6 +161,7 @@ class Connection():
       # \param data Information to be transmitted to the connection
       # \todo This needs to check if this is raw data, or a DataPacket. Both 
       #  should be handled.
+      # \todo Call to self.Heal() should be moved into the thread class
       if( data.__class__.__name__ == 'DataPacket' ):
          data = data.Data
       else:
@@ -175,8 +179,6 @@ class Connection():
             retries += 1
             if( retries > 5 ):
                raise
-            # TODO: This call should be moved to the Thread, so that we can
-            #  catch interrupts while we run. 
             self.Heal()
 
 
@@ -184,7 +186,10 @@ class Connection():
       """
       Attempts to accept any new connections. This makes zero sense to non-Bind connections
       """
-      ## 
+      ##
+      # \return New Connection object if one is accepted, None otherwise.
+      # \pre This Connection must be an incoming bind connection. 
+      # \throw socket.error If object is not an incoming bind connection.
       if( self.Bind ):
          try:
             conn, addr = self.Socket.accept()
@@ -197,6 +202,11 @@ class Connection():
 
 
    def Flush( self ):
+      """
+      Remove all existing Packets, data, and flush the incoming buffer.
+      """
+      ##
+      # \post No data will exist in this connection, it will appear fresh
       print "Flush!"
       for i in self.Packets:
          print i
@@ -222,11 +232,15 @@ class Connection():
       ##
       # \param cause Placeholder, Ignored. Will eventually allow Heal to respond correctly 
       # to the issue. 
+      # \post Connection will attempt to be reset
       self.Socket.close()
       self.Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
       try:
-         self.Socket.connect( ( self.Address, self.Port) )
-         self.Socket.settimeout( 0 )
+         if( self.Bind ):
+            self.Socket.bind( ( self.Address, self.Port ) )
+            self.Socket.listen( 5 )
+         else:
+            self.Socket.connect( ( self.Address, self.Port ) )
       except ( socket.error ) as e2:
          if( e2[0] == 10061 ):
             print "Packet Refused"
@@ -236,6 +250,11 @@ class Connection():
 
 
    def GetAge( self ):
+      """
+      How old this this connection.
+      """
+      ##
+      # \return Age of connection in seconds. 
       return time.time() - self.FirstHeard
 
 
@@ -250,6 +269,9 @@ class Connection():
 
 
    def Close( self ):
+      """
+      Try to gracefully close the connection
+      """
       self.Socket.close()
 
 
@@ -290,6 +312,15 @@ class ConnectionThread():
       self.Pool = list()
 
    def Run( self ):
+      """
+      Begin execution of the thread
+      """
+      ##
+      # \return None
+      # \todo Replace print statements with calls to logging
+      # \todo Recv call might not be needed
+      # \todo Check if sending data handles error correction
+
       # Infinite loop of execution
       RunFrameRate = 60
       lastFrame = time.time()
@@ -303,7 +334,6 @@ class ConnectionThread():
             # Check for new connections to add to the pool
             try:
                tmp = self.Connection.Accept()
-               # TODO: Replace this print line with a logging call
                if( tmp ):
                   print 'Connected by', tmp
                   pool.append( tmp )
@@ -314,8 +344,7 @@ class ConnectionThread():
             # Handle incoming client requests
             for idx,val in enumerate( pool ):
                # Try to receive data
-               # TODO: This try-except might be handled by the Connection class
-               #  already. Look into this and remove if it isn't needed
+               # Do we need this recv call here?
                try:
                   val.Recv( )
                except( socket.error ):
@@ -323,10 +352,9 @@ class ConnectionThread():
                while( val.HasPacket() ):
                   tmp = val.GetPacket( )
                   print tmp
-                  print tmp.Open()
+                  print tmp.Open( )
                   self.ResultsQ.put( tmp )
                if( val.Stale( ) ):
-                  # TODO: This section should be a log, not a print
                   print "\nCheck",val
                   print " Connection timed Out"
                   print " Removed!",val
@@ -357,7 +385,6 @@ class ConnectionThread():
             while( self.Connection.HasPacket() ):
                self.resultsQ.put( self.Connection.GetPacket( ) )
             
-            # TODO: Adjust this section to handle sending errors like bellow
             while( self.JobsQ.empty() == False ):
                tmp = self.JobsQ.get()
                # self.Connection.Send( DataPacket( tmp, direction='out' ) )
@@ -374,7 +401,6 @@ class ConnectionThread():
                lastHeartBeat = time.time()
 
             if( self.Connection.Stale( ) ):
-               # TODO: This section should be a log, not a print
                print "\nCheck",self.Connection
                print " Connection timed Out"
                print " Removed!",self.Connection
@@ -421,6 +447,8 @@ class DataPacket( ):
          a contiguous form, so __init__ assumes that it make be missing or have excess 
          data to work with. On return, the Health state is set. 
       """
+      ##
+      # \todo We do not check the health of the DataPacket in the direction='out' path
 
       # Data input/output is kept in the same container
       self.Data = data
@@ -470,7 +498,6 @@ class DataPacket( ):
          self.Health = 1
 
       elif( direction in ['out'] ):
-         # TODO: Check the health of the resultant packet
          self.Data = PrepPacket( 0, self.Data )
          pass
 
@@ -559,7 +586,10 @@ class DataPacket( ):
 
 
 def getLenBytes( data ):
-   # Calculate 4 bytes
+   ##
+   # Calculate the length bytes for a datapacket. 
+   # \param data Data to be parsed 
+   # \return Length 4 string of bytes that represents the data
    retVal = list( )
    data = len( data )
    tmp = 0
@@ -575,11 +605,14 @@ def getLenBytes( data ):
 
 
 
-def PrepPacket( type, data ):
+def PrepPacket( dType, data ):
    """
    Return a prepared network packet string of type comprised in data
    """
-   dType = chr(type)
+   ##
+   # \param data Input data to place into a packet
+   # \return fully prepared byte wise data packet
+   dType = chr(dType)
    data = cPickle.dumps( data, 2 )
    dLen = getLenBytes( data )
 
