@@ -1,3 +1,4 @@
+from sys import getrefcount
 
 def singleton(cls):
    instances = {}
@@ -39,12 +40,14 @@ class Foo():
       # 'Create' an ID instance, get the new ID, and register it
       self.ID = ID().NewID( self )
 
-   def __del__( self ):
-      print "Delete!"
-      pass
+   def Prune( self ):
+      ID().Unregister( self.ID )
+      self.ID = None
+
 
 
 if __name__ == '__main__':
+   import time
    # Here we are testing to prove that two examples of ID are the same 
    # object in memory!
    s1 = ID()
@@ -66,8 +69,13 @@ if __name__ == '__main__':
    print x.ID
 
    print s1.FindID(4)
-
+   print "rCount:",getrefcount(x)
+   x.Prune()
+   print "rCount:",getrefcount(x)
    del x
-
+   print "post"
+   time.sleep(1)
+   x=5
    print s1.FindID(4)
+
 
