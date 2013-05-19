@@ -37,3 +37,6 @@ nosetests.xml
 
 # Documentation 
 doc
+
+# Game Logs
+*.log

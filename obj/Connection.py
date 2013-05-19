@@ -1,5 +1,6 @@
 import collections
 import cPickle
+import logging
 import Queue
 import socket
 import threading
@@ -177,7 +178,7 @@ class Connection():
             print "Waiting %d seconds"%( retries )
             time.sleep(retries)
             retries += 1
-            if( retries > 5 ):
+            if( retries > 3 ):
                raise
             self.Heal()
 
@@ -325,17 +326,28 @@ class ConnectionThread():
       RunFrameRate = 60
       lastFrame = time.time()
       if( self.Ctype == 'server' ):
+         # TODO: This logging class is only defined for the server side. This should be moved
+         logger = logging.getLogger('log.Conn')
+         logger.info( "Server Thread booted" )
          pool = list()
          while True:
             tmpDiff = time.time() - lastFrame
             if( tmpDiff < 1/float(RunFrameRate) ):
                time.sleep( 1/float(RunFrameRate) - tmpDiff )
             lastFrame = time.time()
+            
+
+            if( self.QuitQ.qsize() ):
+               self.Connection.Close()
+               for i in pool:
+                  i.Close()
+               return
+
             # Check for new connections to add to the pool
             try:
                tmp = self.Connection.Accept()
                if( tmp ):
-                  print 'Connected by', tmp
+                  logger.info( "Connected by: " + tmp.__str__() )
                   pool.append( tmp )
             except( socket.timeout, socket.error ):
                # No connections were received, move on
@@ -350,10 +362,11 @@ class ConnectionThread():
                except( socket.error ):
                   pass
                while( val.HasPacket() ):
-                  tmp = val.GetPacket( )
-                  print tmp
-                  print tmp.Open( )
-                  self.ResultsQ.put( tmp )
+                  tmp = val.GetPacket( ).Open()
+                  if( tmp == "Thump!" ):
+                     pass
+                  else:
+                     self.ResultsQ.put( tmp )
                if( val.Stale( ) ):
                   print "\nCheck",val
                   print " Connection timed Out"
@@ -391,12 +404,12 @@ class ConnectionThread():
                self.Connection.Send( tmp )
 
 
-            if( self.QuitQ.empty() == False ):
+            if( self.QuitQ.qsize() ):
                self.Connection.Close()
                return
 
             if( time.time() - lastHeartBeat > heartbeat ):
-               print "Thump!"
+               # print "Thump!"
                self.Connection.Send( "Thump!" ) 
                lastHeartBeat = time.time()
 
@@ -629,20 +642,24 @@ def PrepPacket( dType, data ):
 
 # Place holder test code
 if __name__ == '__main__':
+   pass
 
-   Jobs = Queue.Queue()
-   Results = Queue.Queue()
-   Quitter = Queue.Queue()
-   Locker = threading.Lock()
+   # Example code on use. This hosts a server
 
 
-   x = ConnectionThread(
-      Jobs, 
-      Results,
-      Quitter, 
-      Locker, 
-      '', 
-      port=56464, 
-      Ctype='server' 
-      )
-   x.Run()
+   # Jobs = Queue.Queue()
+   # Results = Queue.Queue()
+   # Quitter = Queue.Queue()
+   # Locker = threading.Lock()
+
+
+   # x = ConnectionThread(
+   #    Jobs, 
+   #    Results,
+   #    Quitter, 
+   #    Locker, 
+   #    '', 
+   #    port=56464, 
+   #    Ctype='server' 
+   #    )
+   # x.Run()

@@ -1,10 +1,12 @@
 # Normal Modules
+import atexit
+import logging
 import math
 import os
+import Queue
 import socket
 import sys
 import threading
-import Queue
 
 # Import Third Party Modules
 import pygame
@@ -14,7 +16,27 @@ from obj.Connection import ConnectionThread
 
 def Main( ):
    print "Begin Main()"
-   ####  Setup PyGame ####
+
+   # <<<Setup Logging>>>
+   
+   # Create a logging class
+   logger = logging.getLogger( 'log' )
+   logger.setLevel( logging.DEBUG )
+   fh = logging.FileHandler( 'server.log' )
+   fh.setLevel( logging.DEBUG )
+   formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - (%(filename)s:%(module)s:%(funcName)s:%(lineno)d) - %(message)s')
+   fh.setFormatter(formatter)
+   logger.addHandler(fh)
+   logger.info( "Main Booted" )
+
+   # 'application' code
+   # logger.debug('debug message')
+   # logger.info('info message')
+   # logger.warn('warn message')
+   # logger.error('error message')
+   # logger.critical('critical message')
+
+   # <<<Setup PyGame>>>
    pygame.init()
    clrDict = {
       'black' :[  0,  0,  0],
@@ -32,13 +54,18 @@ def Main( ):
    clock = pygame.time.Clock()
 
    # Setup INet Connection
-   HOST = '' # Symbolic name meaning all available interfaces
-   PORT = 56464
-   s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-   s.bind( (HOST, PORT) )
-   s.listen( 5 )
-   s.settimeout( 0 )
-   pool = list()
+   jobsQueue = Queue.Queue()
+   resultsQueue = Queue.Queue()
+   quitQueue = Queue.Queue()
+   lockObj = None
+   address = ''
+   port = 56464
+   serverInput = ConnectionThread( jobsQueue, resultsQueue, quitQueue, None, address, port )
+   
+   # Begin server thread
+   serverThread = threading.Thread( target = serverInput.Run )
+   atexit.register( quitQueue.put, "Quit" )
+   serverThread.start()
 
 
    running = True
@@ -57,50 +84,21 @@ def Main( ):
 
       ### Networking ###
       
-      # Accept new incoming connections, Append them to our list
-      try:
-         conn, addr = s.accept()
-         print 'Connected by', addr
-         pool.append( Connection( conn, addr ) )
-      except( socket.timeout, socket.error ):
-         pass
-      
-      # Handle incoming client requests
-      for idx,val in enumerate( pool ):
-         # print "Check",val
+      while( resultsQueue.qsize() ):
+         print "Network has a message!"
          try:
-            val.Recv( )
-         except( socket.error ):
+            tmp = resultsQueue.get( False )
+            print "It was:",tmp
+         except ( Queue.Empty ):
+            print "Queue had something, but then it didn't? Where did it go!"
             pass
-         if( val.Data ):
-            pass
-            # print "Check",val
-            # print " Got:",val.Data
-         else:
-            if( val.Stale( 1 ) ):
-               print "\nCheck",val
-               print " Connection timed Out"
-               print " Removed!",val
-               print " Age:",val.Age()
-               print " In:",val.In
-               print " Out:",val.Out
-               print " Btyes/s:",val.In/val.Age()
-               del pool[idx]
-         try:
-            val.Send( val.Data )
-         except socket.error as e :
-            # Work needs to be done here to handle a larger range of error codes. 
-            if( e.errno == 10035 ):
-               pass
-            else:
-               print " Cannot send! Delete!"
-               print e,
-               del pool[idx]
 
 
 
       ### Simulation ###
       # Now we must handle the simulation itself. 
+   quitQueue.put("End Game")
+   serverThread.join( 10.0 )
    pygame.quit()
 
 
