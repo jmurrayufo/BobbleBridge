@@ -309,6 +309,8 @@ class ConnectionThread():
          self.Connection = Connection( address, port, False )
       self.Ctype = Ctype
 
+      self.Logger = logging.getLogger('log.Conn')
+
       # The Pool holds the set of connections we care about
       self.Pool = list()
 
@@ -327,8 +329,7 @@ class ConnectionThread():
       lastFrame = time.time()
       if( self.Ctype == 'server' ):
          # TODO: This logging class is only defined for the server side. This should be moved
-         logger = logging.getLogger('log.Conn')
-         logger.info( "Server Thread booted" )
+         self.Logger.info( "Server Thread Booted" )
          pool = list()
          while True:
             tmpDiff = time.time() - lastFrame
@@ -338,6 +339,7 @@ class ConnectionThread():
             
 
             if( self.QuitQ.qsize() ):
+               self.Logger.debug( "Server thread shutdown detected" )
                self.Connection.Close()
                for i in pool:
                   i.Close()
@@ -347,7 +349,7 @@ class ConnectionThread():
             try:
                tmp = self.Connection.Accept()
                if( tmp ):
-                  logger.info( "Connected by: " + tmp.__str__() )
+                  self.Logger.info( "Connected by: " + tmp.__str__() )
                   pool.append( tmp )
             except( socket.timeout, socket.error ):
                # No connections were received, move on
@@ -368,13 +370,12 @@ class ConnectionThread():
                   else:
                      self.ResultsQ.put( tmp )
                if( val.Stale( ) ):
-                  print "\nCheck",val
-                  print " Connection timed Out"
-                  print " Removed!",val
-                  print " Age:",val.GetAge()
-                  print " In:",val.In
-                  print " Out:",val.Out
-                  print " Btyes/s:",(val.In + val.Out)/val.GetAge()
+                  self.Logger.debug( "Stale Connection" )
+                  self.Logger.debug( "Checking: " + val.__str__() )
+                  self.Logger.debug( "Age: " + str( val.GetAge() ) )
+                  self.Logger.debug( "In: " + str( val.In ) )
+                  self.Logger.debug( "Out: " + str( val.Out ) )
+                  self.Logger.debug( "Bytes/s: " + str( (val.In + val.Out)/val.GetAge() ) )
                   del pool[idx]
 
       elif( self.Ctype == 'client' ):
@@ -383,7 +384,7 @@ class ConnectionThread():
          heartbeat = 5
          lastHeartBeat = time.time() - heartbeat 
 
-         print "Connected!"
+         self.Logger.info( "Client Network Thread Booted" )
          while True:
 
             tmpDiff = time.time() - lastFrame
@@ -406,21 +407,23 @@ class ConnectionThread():
 
             if( self.QuitQ.qsize() ):
                self.Connection.Close()
+               self.Logger.info( "Client thread Shutting down" )
                return
 
             if( time.time() - lastHeartBeat > heartbeat ):
-               # print "Thump!"
+               self.Logger.debug( "Thump!" )
                self.Connection.Send( "Thump!" ) 
                lastHeartBeat = time.time()
 
             if( self.Connection.Stale( ) ):
-               print "\nCheck",self.Connection
-               print " Connection timed Out"
-               print " Removed!",self.Connection
-               print " Age:",self.Connection.GetAge()
-               print " In:",self.Connection.In
-               print " Out:",self.Connection.Out
-               print " Btyes/s:",(self.Connection.In + self.Connection.Out)/self.Connection.GetAge()
+               val = self.Connection
+               self.Logger.debug( "Stale Connection" )
+               self.Logger.debug( "Checking: " + val.__str__() )
+               self.Logger.debug( "Age: " + str( val.GetAge() ) )
+               self.Logger.debug( "In: " + str( val.In ) )
+               self.Logger.debug( "Out: " + str( val.Out ) )
+               self.Logger.debug( "Bytes/s: " + str( (val.In + val.Out)/val.GetAge() ) )
+               self.Logger.error( "Client thread Shutting down" )
                return
 
 

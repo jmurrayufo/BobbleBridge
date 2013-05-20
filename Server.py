@@ -7,27 +7,29 @@ import Queue
 import socket
 import sys
 import threading
+import re
 
 # Import Third Party Modules
 import pygame
 
 # Import Custom Modules
+from obj.Vector import Vector2
 from obj.Connection import ConnectionThread
+from obj.Ship import Ship
 
 def Main( ):
-   print "Begin Main()"
-
    # <<<Setup Logging>>>
-   
    # Create a logging class
    logger = logging.getLogger( 'log' )
    logger.setLevel( logging.DEBUG )
    fh = logging.FileHandler( 'server.log' )
    fh.setLevel( logging.DEBUG )
-   formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - (%(filename)s:%(module)s:%(funcName)s:%(lineno)d) - %(message)s')
+   formatter = logging.Formatter('%(asctime)s - %(levelname)s - (%(filename)s:%(module)s:%(funcName)s:%(lineno)d) - %(message)s')
    fh.setFormatter(formatter)
    logger.addHandler(fh)
    logger.info( "Main Booted" )
+   for i in range(10):
+      logger.info("***************")
 
    # 'application' code
    # logger.debug('debug message')
@@ -70,6 +72,8 @@ def Main( ):
 
    running = True
 
+   ship = Ship()
+
    while running: 
       ### PyGame Bookkeeping ###
       clock.tick(60)
@@ -79,26 +83,44 @@ def Main( ):
          if event.type == pygame.QUIT: # If user clicked close
             running = False # Flag that we are done so we exit this loop
 
-
-
-
       ### Networking ###
-      
       while( resultsQueue.qsize() ):
-         print "Network has a message!"
          try:
             tmp = resultsQueue.get( False )
-            print "It was:",tmp
+            print "Got Message:",tmp
+            if( type( tmp ) == str ):
+               matchStr = "(\d+(?:\.\d+)?),(\d+(?:\.\d+)?)"
+               matchObj = re.match( matchStr, tmp )
+               if( matchObj ):
+                  print "Got:",matchObj.groups()
+                  matchObj = matchObj.groups()
+                  mag = float(matchObj[0])
+                  direction = float(matchObj[1])
+                  ship.Vel = Vector2( m=mag, d=direction )
          except ( Queue.Empty ):
             print "Queue had something, but then it didn't? Where did it go!"
             pass
 
 
-
       ### Simulation ###
       # Now we must handle the simulation itself. 
+      ship.Loc += ship.Vel * clock.get_time()/1000
+      x,y = ship.Loc.GetXY()
+      x=int(x)
+      y=int(y)
+      pygame.draw.circle( screen, clrDict['red'], [x,-y], 10 )
+
+      pygame.display.flip()
+
+      screen.fill( clrDict['white'] )
+
+
+      # End of While Loop
+   logger.info( "Ending Game" )
    quitQueue.put("End Game")
+   logger.debug( "Begin join call" )
    serverThread.join( 10.0 )
+   logger.debug( "Finished join call" )
    pygame.quit()
 
 
