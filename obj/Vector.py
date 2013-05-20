@@ -79,13 +79,13 @@ class Vector2():
          x = kargs['x']
          y = kargs['y']
          self.Mag = math.sqrt( x**2 + y**2 )
-         self.Angle = math.atan2( y, x )
+         self.Angle = math.atan2( x, y )
       elif( len(args) == 2 and type(args[0]) in [int,float,long] 
          and type(args[1]) in [int,float,long]):
          x = args[0]
          y = args[1]
          self.Mag = math.sqrt( x**2 + y**2 )
-         self.Angle = math.atan2( y, x )
+         self.Angle = math.atan2( x, y )
       elif( keys[0] in ['m','r'] and keys[1] in ['m','r'] ):
          self.Mag = kargs['m']
          self.Angle = kargs['r']
@@ -259,7 +259,7 @@ class Vector2():
       """
       Return an X,Y tuple of the vector assumed with a center of 0
       """
-      return ( self.Mag * math.cos( self.Angle ), self.Mag * math.sin( self.Angle ) )
+      return ( self.Mag * math.sin( self.Angle ), self.Mag * math.cos( self.Angle ) )
 
 
    def Unit( self ):
@@ -291,9 +291,9 @@ def RD2( radians ):
 
 if __name__ == '__main__':
 
-      print Vector2( )
-      print Vector2( Vector2(m=5,d=360) )
-      print Vector2( 4, 5 )
-      print Vector2( x = 4, y = 5 )
-      print Vector2( m = 5, r = 3.14159 )
-      print Vector2( m = 10, d = 180 )
+   print Vector2( m=1, d=0 )
+   print Vector2( 0, 1 )
+   print Vector2( 1, 0 )
+   v1 = Vector2( m=1, d=0 )
+   v2 = Vector2( m=1, d=3 )
+   print v1*v2
