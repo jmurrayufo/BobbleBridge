@@ -6,18 +6,19 @@ class Obj( ):
       Object storage class. Every "Thing" in the world will be derived from this class. 
       """
 
-      # Unique ID
+      ## Unique ID
+      # This should be a unique number to identify the object in the program.
       self.ID = None
 
-      # Name (Not guaranteed to be unique)
+      ## Name (Not guaranteed to be unique)
       self.Name = "DEFAULT"
 
-      # Numeric faction alliance. 
+      ## Numeric faction alliance. 
       # Special Cases:
-      #  -1: All other non zero targets are enemies, including other -1's
-      #   0: Neutral (eg: planet, asteroid)
-      #   1: Players faction
-      #  2+: Positive integers represent unique factions at war with each other
+      # * -1: All other non zero targets are enemies, including other -1's
+      # * 0: Neutral (eg: planet, asteroid)
+      # * 1: Players faction
+      # * 2+: Positive integers represent unique factions at war with each other
       self.Faction = 0  
 
       loc = kargs.get( 'loc', ( 0, 0 ) )

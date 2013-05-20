@@ -286,7 +286,7 @@ class Vector2():
 def D2R( degrees ):
    return degrees / 180. * math.pi
 
-def RD2( radians ):
+def R2D( radians ):
    return radians / math.pi * 180.
 
 if __name__ == '__main__':

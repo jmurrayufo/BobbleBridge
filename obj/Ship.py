@@ -3,9 +3,6 @@ from Obj import Obj
 class Ship( Obj ):
    def __init__( self, *args, **kwargs ):
       Obj.__init__( self, *args, **kwargs )
-      self.ID = 0
-      
-      self.Name = 'DEFAULT'
 
       # AI event driven actions will be stored here. 
       self.Action = None
