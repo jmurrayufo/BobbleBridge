@@ -1,47 +1,55 @@
-"""
-Window will be used for all of the windows and visual displays in the game.
+#!/python27/python
 
-This Module Assumes that
-import pygame
-&
-from pygame.locals import *
-&
-pygame.init()
-Have all been asserted
+MASTERWINDOWEXISTS = 0
 
-Note: you can change the working directory with os.chdir( path ).
-"""
 class Window:
-	Width  = 0
-	Height = 0
-	WidthOffset  = 0
-	HeightOffset = 0
-	def __init__(self,*args,**kargs):
+	"""
+	Window(char Type)
+		Initializes a Window Variable or Type
+		Return Values:
+			self, if the Function returns self it has initailized a window correctly. Otherwise there is a problem of some form
+		Error Codes:
+			1: 
+				User Has Attempted to initailize a Second Master Type Window
+		Type:
+			'M' or 'm':
+				A Master Window, only one of these can exist at a time, if the user attempts to initailize a second one the __init__()
+				fucntions hould return a value of 1
+			'B' or 'b':
+				A Button Type Window, many of these can exist. Any Time the screen is clicked the master window should traverse
+				the tree of all sub windows to detect which button was clicked. Only Windows of Type 'B' should aknowledge Clicks
+	"""
+	def __init__(self,Type):
+		if Type == 'M' or Type == 'm':
+			print "Request For Master Window Made"
+			if MASTERWINDOWEXSTS = 0:
+				print "The Request is Granted"
+				self.Type = 'M'
+				return self
+			else:
+				print "The Request is Denied, A Master Window Already Exists"
+				return 1
+		else if Type == 'B' or Type == 'B':
+			print "Request for Button. \nThe Request is Granted"
+			self.Type = 'B'
+			return self
+		else:
+			print "Request For Window of Undefined Type. Initializing Window of Type: "+Type+"This Window will be unable to perform many functions"
+			self.Type = Type
+			return self
+	def setOffsets(self, xOffset, yOffset):
 		"""
-		 Window()
-			Creates an empty window bucket. This Window Can Be manipulated
-		 Window(Window)
-			Copy Constructor
-		 Window(int, int)
-			Two Integer Arguments will result in a window being created of width int1 and height int2
-			This window will be initialized in the upper left corner of the screen
-		Window(int, int, int, int)
-			four integers will be treated as such Width, Height, X Offset, Y Offset
-		Window("M") or Window("m")
-			initializes this Window as the master window
-			The master window is the window in which other windows will be drawn.	
+		setOffsets(xOffset,yOffset):
+			sets the Offset of a Subwindow from the upper left corner of the master Window
 		"""
-		if self.args[1] == 'M' or self.args[1] == 'm':
-			print 'Hit Master Case'
- 
-	def setLayer(int):
+		if Type == 'M':
+			print "The master Window may not have offsets"
+			return
+		self.xOffset = xOffset
+		self.yOffset = yOffset
+	def refresh(self):
 		"""
-		 Set the 'Layer of the window' To the specified integer, Windows will higher integers will be given display
-		 priority over lower layers.
+		refresh()
+			This function should refresh the window to reflect all of the information which has been updated since the previous refresh
 		"""
-	def draw():
-		"""
-			Draw the Window onto the Screen
-		"""
-		 
- 
+		return # this Function Has not yet been written, thus the flat return statement
